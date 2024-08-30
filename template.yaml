@@ -1,0 +1,150 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  SAM Template for managing roads 
+
+Globals:
+  Function:
+    Timeout: 10
+    MemorySize: 128
+  Api:
+    Cors:
+      AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+      AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+      AllowOrigin: "'*'"
+
+Resources:
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaBasicExecution
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: arn:aws:logs:*:*:*
+
+  ApiRoadsServices:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      Name: roads-api
+
+  GetRoadsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: get_roads/
+      Handler: app.lambda_handler
+      Runtime: python3.12
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Architectures:
+        - x86_64
+      Events:
+        getRoads:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiRoadsServices
+            Path: /roads
+            Method: get
+
+  SaveRoadFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: save_road/
+      Handler: app.lambda_handler
+      Runtime: python3.12
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Architectures:
+        - x86_64
+      Events:
+        saveRoad:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiRoadsServices
+            Path: /roads
+            Method: post
+
+  UpdateRoadFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: update_road/
+      Handler: app.lambda_handler
+      Runtime: python3.12
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Architectures:
+        - x86_64
+      Events:
+        updateRoad:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiRoadsServices
+            Path: /roads/{roadId}
+            Method: put
+
+  DeleteRoadFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: delete_road/
+      Handler: app.lambda_handler
+      Runtime: python3.12
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Architectures:
+        - x86_64
+      Events:
+        deleteRoad:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiRoadsServices
+            Path: /roads/{roadId}
+            Method: delete
+
+  CreateTableFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: create_table/
+      Handler: app.lambda_handler
+      Runtime: python3.12
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Architectures:
+        - x86_64
+      Timeout: 60
+      Events:
+        createTable:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiRoadsServices
+            Path: /create-table
+            Method: post
+
+Outputs:
+  RoadsApi:
+    Description: "API Gateway endpoint URL for Prod stage for Roads API"
+    Value: !Sub "https://${ApiRoadsServices}.execute-api.${AWS::Region}.amazonaws.com/Prod/roads/"
+
+  GetRoadsFunction:
+    Description: "GetRoads Lambda Function ARN"
+    Value: !GetAtt GetRoadsFunction.Arn
+
+  SaveRoadFunction:
+    Description: "SaveRoad Lambda Function ARN"
+    Value: !GetAtt SaveRoadFunction.Arn
+
+  UpdateRoadFunction:
+    Description: "UpdateRoad Lambda Function ARN"
+    Value: !GetAtt UpdateRoadFunction.Arn
+
+  DeleteRoadFunction:
+    Description: "DeleteRoad Lambda Function ARN"
+    Value: !GetAtt DeleteRoadFunction.Arn
